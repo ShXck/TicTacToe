@@ -1,0 +1,40 @@
+;; The first three lines of this file were inserted by DrRacket. They record metadata
+;; about the language level of this file in a form that our tools can easily process.
+#reader(lib "htdp-advanced-reader.ss" "lang")((modname TicTacToes) (read-case-sensitive #t) (teachpacks ()) (htdp-settings #(#t constructor repeating-decimal #t #t none #f () #f)))
+;NOMENGLATURA
+;0 -> Casilla vacía.
+;1 -> Casilla con X.
+;2 -> Casilla con O.
+
+
+;Función principal del juego.
+(define (TTT width height)
+  (cond ((valid? width height) (build-board width height))
+        (else (display "INVALID PARAMETERS"))
+  )
+)
+
+(define (place-symbol 
+
+;Función que crea el tablero de MxN.
+(define (build-board width height)
+  (cond ((equal? height 0) '())
+        (else (cons (build-board-aux width) (build-board width (- height 1))))
+  )
+)
+
+;Función auxiliar que crea las filas del tablero.
+(define (build-board-aux width)
+  (cond ((equal? width 1) (list 0))
+        (else (cons 0  (build-board-aux (- width 1))))))
+  
+    
+;Determina si las dimensiones del tablero son válidas.
+(define (valid? width height)
+  (cond ((and (>= width 3)
+              (>= height 3)
+              (<= width 10)
+              (<= height 10)) #t)
+        (else #f)
+  )
+)
