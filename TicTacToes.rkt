@@ -11,16 +11,49 @@
 ;Calcula los candidatos para el siguiente movimiento.
 (define (candidates-func board)
   (cond ((null? board) '())
-        (else (get-candidate-cells (get-circles-position board 0)))))
+        (else (get-candidate-cells (get-circles-position board 0))))) ;TODO: cuando no haya ningun circulo elegir una casilla aleatoria.
 
 ;Evalua los candidatos y verifica que sean movimientos válidos.
 (define (feasibility-func candidates board)
   (cond ((null? candidates) '())
-        (else (cond ((exists? (caar candidates) (car (cdr (car candidates))) (get-width board) (get-height board)) (cons (car candidates) (feasibility-func (cdr candidates) board)))
-                    (else (feasibility-func (cdr candidates) board))))))
-  
+        (else (cond ((and (exists? (caar candidates) (car (cdr (car candidates))) (get-width board) (get-height board))
+                          (equal? (get-symbol (caar candidates) (car(cdr(car candidates))) board) 0)) (cons (car candidates) (feasibility-func (cdr candidates) board)))
+                    (else (feasibility-func (cdr candidates) board) ) ))))
 
-                                                      
+;Asigna una calificación a cada posición candidata. ;TODO: Agregar calificacion tambien con numero de unos, significa que bloqueará al jugador.
+(define (objective-func newcandidates board)
+  (cond ((null? newcandidates) '())
+        (else (cons (cons (+ (count-element-row (get-row (caar newcandidates) board) 2) (count-element-col (car(cdr(car newcandidates))) 2 board)) (car newcandidates) ) (objective-func (cdr newcandidates) board))))) 
+
+;Función de selección: elige a uno de los mejores candidatos para servir como solución parcial.
+(define (selection-func ratedcandidates)
+  (list-ref (remove-duplicates (selection-aux ratedcandidates)) (random (round(/ (listlen(remove-duplicates (selection-aux ratedcandidates))) 2)))))
+
+
+;Obtiene los mejores candidatos de la selección.
+(define (selection-aux ratedcandidates)
+  (cond ((null? ratedcandidates) '())
+        (else (cond ((equal? (caar ratedcandidates) (get-highest-rate ratedcandidates 0)) (cons (cdr(car ratedcandidates)) (selection-aux (cdr ratedcandidates))))
+                    (else (selection-aux (cdr ratedcandidates)))))))
+
+;Obtiene la mayor calificación de los candidatos.
+(define (get-highest-rate ratedcandidates highest)
+  (cond ((null? ratedcandidates) highest)
+        (else (cond ((> (caar ratedcandidates) highest) (get-highest-rate (cdr ratedcandidates) (caar ratedcandidates)))
+                    (else (get-highest-rate (cdr ratedcandidates) highest))))))
+
+;Cuenta las apariciones de un elemento en una fila.
+(define (count-element-row rowlst ele)
+  (cond ((null? rowlst) 0)
+        (else (cond ((equal? (car rowlst) ele) (+ (count-element-row (cdr rowlst) ele) 1))
+                    (else (count-element-row (cdr rowlst) ele))))))
+
+;Cuenta las apariciones de un elemento en una columna
+(define (count-element-col colnumber ele board)
+  (cond ((null? board) 0)
+         (else (cond ((equal? (list-ref (car board) colnumber) ele) (+ 1 (count-element-col colnumber ele (cdr board))))
+                     (else (count-element-col colnumber ele (cdr board)))))))
+
 ;Obtiene los candidatos a partir de donde haya puesto circulos el sistema.
 (define (get-candidate-cells circles)
   (cond ((null? circles) '())
@@ -67,16 +100,17 @@
 )
 
 ;Obtiene el simbolo en una posición del tablero.
-(define (get-symbol x y board)
+(define (get-symbol row col board)
   (cond ((null? board) -1)
-        (else (list-ref (list-ref board y) x))))
+        ((exists? row col (get-width board) (get-height board)) (list-ref (list-ref board row) col)) 
+        (else -1)))
 
 ;Cambia el valor de un item dentro del tablero dadas sus coordenadas.
-(define (change-symbol board y x newval)
+(define (change-symbol board row col newval)
   (cond
     ((empty? board) '())
-    ((= y 0) (cons (change-item-val (car board) x newval) (cdr board)))
-    (else (cons (car board) (change-symbol (cdr board) (- y 1) x newval)))))
+    ((= row 0) (cons (change-item-val (car board) col newval) (cdr board)))
+    (else (cons (car board) (change-symbol (cdr board) (- row 1) col newval)))))
 
 ;Cambia el valor de un item dentro de una lista.
 (define (change-item-val lst index newval)
@@ -109,11 +143,11 @@
 )
 
 ;Determina si las coordenadas existen dentro de la matriz.
-(define (exists? x y width height)
-  (cond ((and (>= x 0)
-              (>= y 0)
-              (< x width)
-              (< y height)) #t)
+(define (exists? row col width height)
+  (cond ((and (>= row 0)
+              (>= col 0)
+              (< row height)
+              (< col width)) #t)
          (else #f)))
 
 ;Obtiene las dimensiones de la matriz.
@@ -135,5 +169,21 @@
 (define (size lst)
   (cond ((null? lst) 0)
         (else (+ 1 (size (cdr lst))))))
+
+;Obtiene una fila específica de una matriz.
+(define (get-row rownumber board)
+  (cond ((null? board) '())
+        ((equal? rownumber 0) (car board)) 
+        (else (get-row (- rownumber 1) (cdr board)))))
+
+;Elimina los duplicados de una lista.
+(define (remove-duplicates lst)
+  (cond ((null? lst) '())
+        ((member? (car lst) (cdr lst)) (remove-duplicates (cdr lst)))
+        (else (cons (car lst) (remove-duplicates (cdr lst))))))
+
+(define (listlen lst)
+  (cond ((null? lst) 0)
+        (else (+ 1 (listlen (cdr lst))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
