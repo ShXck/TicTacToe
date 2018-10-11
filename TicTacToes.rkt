@@ -8,10 +8,18 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;GREEDY ALGORITHM;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;Corre el algoritmo codicioso.
+(define (run-algorithm board)
+  (make-system-move board (selection-func (objective-func (feasibility-func (candidates-func board) board) board)) ))
+
+;Hace la jugada usando el resultado del algoritmo.
+(define (make-system-move board coords)
+  (change-symbol board (car coords) (cadr coords) 2))
+  
 ;Calcula los candidatos para el siguiente movimiento.
 (define (candidates-func board)
   (cond ((null? board) '())
-        (else (get-candidate-cells (get-circles-position board 0))))) ;TODO: cuando no haya ningun circulo elegir una casilla aleatoria.
+        (else (get-candidate-cells (append (get-symbol-pos board 1 0) (get-symbol-pos board 2 0)  ))))) ;TODO: cuando no haya ningun circulo elegir una casilla aleatoria.
 
 ;Evalua los candidatos y verifica que sean movimientos válidos.
 (define (feasibility-func candidates board)
@@ -20,14 +28,14 @@
                           (equal? (get-symbol (caar candidates) (car(cdr(car candidates))) board) 0)) (cons (car candidates) (feasibility-func (cdr candidates) board)))
                     (else (feasibility-func (cdr candidates) board) ) ))))
 
-;Asigna una calificación a cada posición candidata. ;TODO: Agregar calificacion tambien con numero de unos, significa que bloqueará al jugador.
+;Asigna una calificación a cada posición candidata.
 (define (objective-func newcandidates board)
   (cond ((null? newcandidates) '())
-        (else (cons (cons (+ (count-element-row (get-row (caar newcandidates) board) 2) (count-element-col (car(cdr(car newcandidates))) 2 board)) (car newcandidates) ) (objective-func (cdr newcandidates) board))))) 
+        (else (cons (cons (+ (count-element-row (get-row (caar newcandidates) board) 2) (count-element-row (get-row (caar newcandidates) board) 1) (count-element-col (car(cdr(car newcandidates))) 2 board) (count-element-col (car(cdr(car newcandidates))) 1 board)) (car newcandidates) ) (objective-func (cdr newcandidates) board))))) 
 
 ;Función de selección: elige a uno de los mejores candidatos para servir como solución parcial.
 (define (selection-func ratedcandidates)
-  (list-ref (remove-duplicates (selection-aux ratedcandidates)) (random (round(/ (listlen(remove-duplicates (selection-aux ratedcandidates))) 2)))))
+  (list-ref (remove-duplicates (selection-aux ratedcandidates)) (random (round(/ (listlen(remove-duplicates (selection-aux ratedcandidates))) 2))))) 
 
 
 ;Obtiene los mejores candidatos de la selección.
@@ -40,7 +48,7 @@
 (define (get-highest-rate ratedcandidates highest)
   (cond ((null? ratedcandidates) highest)
         (else (cond ((> (caar ratedcandidates) highest) (get-highest-rate (cdr ratedcandidates) (caar ratedcandidates)))
-                    (else (get-highest-rate (cdr ratedcandidates) highest))))))
+                    (else (get-highest-rate (cdr ratedcandidates) highest)))))) 
 
 ;Cuenta las apariciones de un elemento en una fila.
 (define (count-element-row rowlst ele)
@@ -75,19 +83,19 @@
           (list(list (+ row 1) (- col 1)))
           (list(list (+ row 1) (+ col 1)))
           ))
-          
-                     
-;Obtiene todos las posiciones donde hay círculos.
-(define (get-circles-position board ys)
-  (cond ((null? board) '())
-        (else (cons (cons ys (get-circles-aux (car board) 0)) (get-circles-position (cdr board) (+ ys 1))))))
-              
-;Función auxiliar que revisa si hay círculos en cada fila.                   
-(define (get-circles-aux lst xs)
-  (cond ((null? lst) '())
-        (else (cond ((equal? (car lst) 2) (cons xs (get-circles-aux (cdr lst) (+ xs 1))))
-                    (else (get-circles-aux (cdr lst) (+ xs 1)))))))
 
+;Obtiene las posiciones de un caracter en específico.
+(define (get-symbol-pos board symbol ys)
+  (cond ((null? board) '())
+        (else (cons (cons ys (get-symbol-pos-aux (car board) symbol 0)) (get-symbol-pos (cdr board) symbol (+ ys 1))))))
+
+;Función auxiliar para obtener la posición de un caracter.
+(define (get-symbol-pos-aux lst symbol xs)
+    (cond ((null? lst) '())
+        (else (cond ((equal? (car lst) symbol) (cons xs (get-symbol-pos-aux (cdr lst) symbol (+ xs 1))))
+                    (else (get-symbol-pos-aux (cdr lst) symbol (+ xs 1)))))))
+          
+         
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;GAME LOGIC;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
