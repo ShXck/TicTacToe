@@ -8,6 +8,12 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;GREEDY ALGORITHM;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;Función principal donde se verifica ganador y si no hay, ejecuta el algoritmo.
+(define (run-main board)
+  (cond ((equal? (solution-func board) 2) (display "Machine Wins!"))
+        ((equal? (solution-func board) 1) (display "Player Wins!"))
+        (else (run-algorithm board))))  
+
 ;Corre el algoritmo codicioso.
 (define (run-algorithm board)
   (make-system-move board (selection-func (objective-func (feasibility-func (candidates-func board) board) board)) ))
@@ -44,12 +50,33 @@
         (else (cond ((equal? (caar ratedcandidates) (get-highest-rate ratedcandidates 0)) (cons (cdr(car ratedcandidates)) (selection-aux (cdr ratedcandidates))))
                     (else (selection-aux (cdr ratedcandidates)))))))
 
+;Determina si se ha hallado una solución.
+(define (solution-func board)
+  (cond ((equal? (winner-row? 2 0 board) (get-height board)) 2)
+        ((equal? (winner-col? 2 0 0 board) (get-width board)) 2)
+        ((equal? (winner-row? 1 0 board) (get-height board)) 1)
+        ((equal? (winner-col? 1 0 0 board) (get-width board)) 1)
+        (else 0)))
+
+              
+;Determina si hay ganador al llenar una fila completa.
+(define (winner-row? symbol acc board)
+  (cond ((null? board) acc)
+        (else (cond ((> (count-element-row (car board) symbol) acc) (winner-row? symbol (count-element-row (car board) symbol) (cdr board)))
+                    (else (winner-row? symbol acc (cdr board)))))))
+
+;Determina si hay ganador al llenar una columna completa.
+(define (winner-col? symbol colnumber acc board)
+  (cond ((equal? colnumber (get-width board)) acc)
+        (else (cond ((> (count-element-col colnumber symbol board) acc) (winner-col? symbol (+ colnumber 1) (count-element-col colnumber symbol board) board))
+                    (else (winner-col? symbol (+ colnumber 1) acc board))))))
+
 ;Obtiene la mayor calificación de los candidatos.
 (define (get-highest-rate ratedcandidates highest)
   (cond ((null? ratedcandidates) highest)
         (else (cond ((> (caar ratedcandidates) highest) (get-highest-rate (cdr ratedcandidates) (caar ratedcandidates)))
                     (else (get-highest-rate (cdr ratedcandidates) highest)))))) 
-
+  
 ;Cuenta las apariciones de un elemento en una fila.
 (define (count-element-row rowlst ele)
   (cond ((null? rowlst) 0)
