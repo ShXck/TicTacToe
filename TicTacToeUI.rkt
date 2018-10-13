@@ -1,6 +1,5 @@
-;; The first three lines of this file were inserted by DrRacket. They record metadata
-;; about the language level of this file in a form that our tools can easily process.
-#reader(lib "htdp-advanced-reader.ss" "lang")((modname TicTacToes) (read-case-sensitive #t) (teachpacks ()) (htdp-settings #(#t constructor repeating-decimal #t #t none #f () #f)))
+#lang racket/gui
+
 ;NOMENGLATURA
 ;0 -> Casilla vacía.
 ;1 -> Casilla con X.
@@ -18,7 +17,7 @@
 (define (run-algorithm board)
   (make-system-move board (selection-func (objective-func (feasibility-func (candidates-func board) board) board)) ))
 
-;Hace la jugada usando el resultado del algoritmo y retorna la posición donde se hizo la jugada.
+;Hace la jugada usando el resultado del algoritmo.
 (define (make-system-move board coords)
   (cons coords (change-symbol board (car coords) (cadr coords) 2)))
   
@@ -41,7 +40,7 @@
 
 ;Función de selección: elige a uno de los mejores candidatos para servir como solución parcial.
 (define (selection-func ratedcandidates)
-  (list-ref (remove-duplicates (selection-aux ratedcandidates)) (random (round(/ (listlen(remove-duplicates (selection-aux ratedcandidates))) 2))))) 
+  (list-ref (remove-duplicates (selection-aux ratedcandidates)) (random (round(/ (listlen(remove-duplicates (selection-aux ratedcandidates))) 2))) )) 
 
 
 ;Obtiene los mejores candidatos de la selección.
@@ -56,7 +55,7 @@
         ((equal? (winner-col? 2 0 0 board) (get-width board)) 2)
         ((equal? (winner-row? 1 0 board) (get-height board)) 1)
         ((equal? (winner-col? 1 0 0 board) (get-width board)) 1)
-        (else 0))) 
+        (else 0)))
 
               
 ;Determina si hay ganador al llenar una fila completa.
@@ -152,7 +151,7 @@
   (cond
     ((empty? lst) '())
     ((= index 0) (cons newval (cdr lst)))
-    (else (cons (car lst) (change-item-val (cdr lst) (- index 1) newval))))) 
+    (else (cons (car lst) (change-item-val (cdr lst) (- index 1) newval)))))
   
 ;Función que crea el tablero de MxN.
 (define (build-board width height)
@@ -214,17 +213,121 @@
 ;Elimina los duplicados de una lista.
 (define (remove-duplicates lst)
   (cond ((null? lst) '())
-        ((memb? (car lst) (cdr lst)) (remove-duplicates (cdr lst)))
+        ((member? (car lst) (cdr lst)) (remove-duplicates (cdr lst)))
         (else (cons (car lst) (remove-duplicates (cdr lst))))))
 
-(define (listlen lst)
-  (cond ((null? lst) 0)
-        (else (+ 1 (listlen (cdr lst))))))
-
 ;Verifica si un elemento pertenece a una lista.
-(define (memb? item lst)
+(define (member? item lst)
   (cond ((null? lst) #f)
         ((equal? (car lst) item) #t)
         (else (member? item (cdr lst)))))
 
+;Obtiene el largo de una lista.
+(define (listlen lst)
+  (cond ((null? lst) 0)
+        (else (+ 1 (listlen (cdr lst))))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;Graphical User Interface;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;Variables 
+(define total -6)
+(define numero_filas 0)
+(define numero_columnas 0)
+(define board '())
+(define machine_play '())
+(define buttons '(2 5))
+
+;Contruye un marco/ventana (Ventana inicial )
+(define frame (new frame% (label "TicTacToe") (width 300) (height 100)))
+
+(define f (new font%) )
+
+;Hacer un mensaje de texto estático en el marco.
+(define msg (new message% (parent frame)(label "Bienvenido a TicTacToe")(font f)  ))
+
+;Hacer un panel para agregar hay botones.
+(define panelFilas_Columnas (new horizontal-panel% (parent frame)))
+
+;Hacer un slider para seleccionar la cantidad de filas en el tablero
+(define slider1(new slider% (parent panelFilas_Columnas)
+                    (label "Filas: ") (min-value 3)  (max-value 10) (font f) 
+                    (callback (lambda (slider event)
+                                (set! total (- (+ (send slider1 get-value) (send slider2 get-value)) 5) )
+                                (send msg2 set-value total) ))
+                    ))
+
+;Hacer un slider para seleccionar la cantidad de columnas en el tablero
+(define slider2 (new slider% (parent panelFilas_Columnas)
+                     (label "Columnas: ") (min-value 3) (max-value 10) (font f)
+                     (callback (lambda (slider event)
+                                 (set! total (- (+ (send slider1 get-value) (send slider2 get-value)) 5) )
+                                 (send msg2 set-value total) ))
+                     ))
+;Hacer un panel para agregar hay botones.
+(define panel (new horizontal-panel% (parent frame)))
+
+;Función para crear el boton de play.
+(define aa (new button% (parent panel) (label "Play") (font f)
+                (stretchable-width 3)
+                (stretchable-height 2)
+                (callback (lambda (button event)
+                            (set! numero_filas (send slider1 get-value))
+                            (set! numero_columnas (send slider2 get-value))
+                            (set! board (TTT numero_columnas numero_filas))
+                            (c_t numero_filas numero_columnas )))
+                )
+  )
+
+
+(define panel2 (new horizontal-panel% (parent frame)))
+
+(define msg2 (new gauge%  (parent panel2) (label "Dificultad : ")(range 15) ))
+(send msg2 set-value 1)
+
+
+(define (c_t filas col)
+  (define frame2 (new frame% (label  (~a(~a "" filas) "x" col ) ) ))
+  ;(define msg (new message% (parent frame2)(label "__Tu turno__")))
+  (printf "> Matriz ~ax~a\n" filas col)
+  (crear_tablero filas col frame2 )
+  )
+
+(define (crear_tablero f c frame2)
+  (cond    
+    ((equal? f 0) (send frame2 show #t))
+    (else
+     (crear_filas f c frame2)
+     (crear_tablero (- f 1) c frame2 )    
+    )
+))
+(define(crear_filas num_fil num_col frame2)
+  (cond
+    ((equal? num_fil 0) 0)
+    (else
+     (define yesFilas (new horizontal-panel% (parent frame2)))
+     (crear_columnas num_fil num_col yesFilas)
+  )))
+
+(define(crear_columnas num_fil num_col panel)
+  (cond
+    ((equal? num_col 0) 0)
+    (else
+     (define yes (new button% (parent panel)
+             (label "  ")
+             (vert-margin  0)
+             (horiz-margin 0)
+             (font f)
+             (callback (lambda (button event)                         
+                         (printf "Fila ~a \n"(/ (send panel get-y) 22))
+                         (printf "Columna ~a \n" (/ (send yes get-x) 66))
+                         (set! board (change-symbol board (/ (send panel get-y) 22) (/ (send yes get-x) 66) 1))
+                         (send yes set-label "X")
+                         (set! machine_play (run-main board))
+                         (set! board (cdr machine_play))
+                         (display board)
+                         ))))
+       (crear_columnas num_fil (- num_col 1) panel)
+       )))
+
+(send frame show #t)
