@@ -40,8 +40,8 @@
 
 ;Función de selección: elige a uno de los mejores candidatos para servir como solución parcial.
 (define (selection-func ratedcandidates)
-  (list-ref (remove-duplicates (selection-aux ratedcandidates)) (random (round(/ (listlen(remove-duplicates (selection-aux ratedcandidates))) 2))) )) 
-
+  (list-ref (remove-duplicates (selection-aux ratedcandidates)) (random (+ (round(/ (listlen(remove-duplicates (selection-aux ratedcandidates))) 2)) 1)) ))
+  
 
 ;Obtiene los mejores candidatos de la selección.
 (define (selection-aux ratedcandidates)
@@ -208,7 +208,7 @@
 (define (get-row rownumber board)
   (cond ((null? board) '())
         ((equal? rownumber 0) (car board)) 
-        (else (get-row (- rownumber 1) (cdr board)))))
+        (else (get-row (- rownumber 1) (cdr board))))) 
 
 ;Elimina los duplicados de una lista.
 (define (remove-duplicates lst)
@@ -275,7 +275,7 @@
                             (set! numero_filas (send slider1 get-value))
                             (set! numero_columnas (send slider2 get-value))
                             (set! board (TTT numero_columnas numero_filas))
-                            (c_t numero_filas numero_columnas )))
+                            (c_t numero_filas numero_columnas)))
                 )
   )
 
@@ -286,6 +286,7 @@
 (send msg2 set-value 1)
 
 
+;Función principal de contrución de tablero.
 (define (c_t filas col)
   (define frame2 (new frame% (label  "TicTacToe: The Game" ) ))
   ;(define msg (new message% (parent frame2)(label "__Tu turno__")))
@@ -293,6 +294,7 @@
   (crear_tablero 0 0 frame2 )
   )
 
+;Función auxiliar que construye el tablero.
 (define (crear_tablero f c frame2)
   (cond    
     ((equal? f numero_filas) (send frame2 show #t))
@@ -302,33 +304,41 @@
     )
 ))
 
+;Crea las filas del tablero.
 (define (crear_filas num_fil num_col frame2)
      (define yesFilas (new horizontal-panel% (parent frame2)))
      (crear_columnas num_fil num_col yesFilas frame2)
   )
 
+;Crea las columnas del tablero.
 (define(crear_columnas num_fil num_col panel frame2)
   (cond
     ((equal? num_col numero_columnas) 0)
     (else
-     (define yes (new button% (parent panel)
+     (define cell (new button% (parent panel)
              (label (get-pos-label num_fil num_col))
              (vert-margin  0)
              (horiz-margin 0)
              (font f)
              (callback (lambda (button event)                         
                          (printf "Fila ~a \n" (round (/ (send panel get-y) 22)))
-                         (printf "Columna ~a \n" (round (/ (send yes get-x) 66)))
-                         (set! board (change-symbol board (/ (send panel get-y) 22) (/ (send yes get-x) 66) 1))
-                         (send yes set-label "X")
-                         (set! machine_play (run-main board))
-                         (set! board (cdr machine_play))
-                         (update-board frame2)
+                         (printf "Columna ~a \n" (round (/ (send cell get-x) 66)))
+                         (cond ((is-valid-move? (round (/ (send panel get-y) 22)) (round (/ (send cell get-x) 66)))
+                                (send cell set-label "X")
+                                (set! board (change-symbol board (round(/ (send panel get-y) 22)) (round(/ (send cell get-x) 66)) 1))
+                                (set! machine_play (run-main board))
+                                (set! board (cdr machine_play))
+                                (update-board frame2)))
                          (print-matrix board)
                          ))))
        (crear_columnas num_fil (+ num_col 1) panel frame2)
        )))
 
+;Verifica que el jugador este haciendo una jugada válida.
+(define (is-valid-move? row col)
+  (cond ((or (equal? (get-symbol row col board) 1)
+             (equal? (get-symbol row col board) 2)) #f)
+        (else #t)))
 
 ;Obtiene el symbolo de una posición de acuerdo a la matriz.
 (define (get-pos-label row col)
@@ -337,15 +347,18 @@
         ((equal? (get-symbol row col board) 2) "O")
         (else "Win")))
 
+;Actualiza el tablero cuando se hace una jugada.
 (define (update-board frame2)
   (clear-board frame2 (send frame2 get-children))
   (crear_tablero 0 0 frame2))
 
+;Limpia el tablero.
 (define (clear-board frame2 children)
   (cond ((null? children) 0)
         (else (send frame2 delete-child (car children))
               (clear-board frame2 (cdr children)))))
 
+;Imprime la matriz.
 (define (print-matrix matr)
   (cond ((null? matr) "")
         (else (displayln (car matr))
