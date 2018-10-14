@@ -9,8 +9,8 @@
 
 ;Función principal donde se verifica ganador y si no hay, ejecuta el algoritmo.
 (define (run-main board)
-  (cond ((equal? (solution-func board) 2) (display "Machine Wins!"))
-        ((equal? (solution-func board) 1) (display "Player Wins!"))
+  (cond ((equal? (solution-func board) 2) (list "Machine Wins!"))
+        ((equal? (solution-func board) 1) (list "Player Wins!"))
         (else (run-algorithm board))))  
 
 ;Corre el algoritmo codicioso.
@@ -236,7 +236,7 @@
 (define numero_columnas 0)
 (define board '())
 (define machine_play '())
-(define buttons '(2 5))
+(define buttons '())
 
 ;Contruye un marco/ventana (Ventana inicial )
 (define frame (new frame% (label "TicTacToe") (width 300) (height 100)))
@@ -287,47 +287,68 @@
 
 
 (define (c_t filas col)
-  (define frame2 (new frame% (label  (~a(~a "" filas) "x" col ) ) ))
+  (define frame2 (new frame% (label  "TicTacToe: The Game" ) ))
   ;(define msg (new message% (parent frame2)(label "__Tu turno__")))
-  (printf "> Matriz ~ax~a\n" filas col)
-  (crear_tablero filas col frame2 )
+  ;(printf "> Matriz ~ax~a\n" filas col)
+  (crear_tablero 0 0 frame2 )
   )
 
 (define (crear_tablero f c frame2)
   (cond    
-    ((equal? f 0) (send frame2 show #t))
+    ((equal? f numero_filas) (send frame2 show #t))
     (else
      (crear_filas f c frame2)
-     (crear_tablero (- f 1) c frame2 )    
+     (crear_tablero (+ f 1) c frame2 )    
     )
 ))
-(define(crear_filas num_fil num_col frame2)
-  (cond
-    ((equal? num_fil 0) 0)
-    (else
-     (define yesFilas (new horizontal-panel% (parent frame2)))
-     (crear_columnas num_fil num_col yesFilas)
-  )))
 
-(define(crear_columnas num_fil num_col panel)
+(define (crear_filas num_fil num_col frame2)
+     (define yesFilas (new horizontal-panel% (parent frame2)))
+     (crear_columnas num_fil num_col yesFilas frame2)
+  )
+
+(define(crear_columnas num_fil num_col panel frame2)
   (cond
-    ((equal? num_col 0) 0)
+    ((equal? num_col numero_columnas) 0)
     (else
      (define yes (new button% (parent panel)
-             (label "  ")
+             (label (get-pos-label num_fil num_col))
              (vert-margin  0)
              (horiz-margin 0)
              (font f)
              (callback (lambda (button event)                         
-                         (printf "Fila ~a \n"(/ (send panel get-y) 22))
-                         (printf "Columna ~a \n" (/ (send yes get-x) 66))
+                         (printf "Fila ~a \n" (round (/ (send panel get-y) 22)))
+                         (printf "Columna ~a \n" (round (/ (send yes get-x) 66)))
                          (set! board (change-symbol board (/ (send panel get-y) 22) (/ (send yes get-x) 66) 1))
                          (send yes set-label "X")
                          (set! machine_play (run-main board))
                          (set! board (cdr machine_play))
-                         (display board)
+                         (update-board frame2)
+                         (print-matrix board)
                          ))))
-       (crear_columnas num_fil (- num_col 1) panel)
+       (crear_columnas num_fil (+ num_col 1) panel frame2)
        )))
+
+
+;Obtiene el symbolo de una posición de acuerdo a la matriz.
+(define (get-pos-label row col)
+  (cond ((equal? (get-symbol row col board) 0) " ")
+        ((equal? (get-symbol row col board) 1) "X")
+        ((equal? (get-symbol row col board) 2) "O")
+        (else "Win")))
+
+(define (update-board frame2)
+  (clear-board frame2 (send frame2 get-children))
+  (crear_tablero 0 0 frame2))
+
+(define (clear-board frame2 children)
+  (cond ((null? children) 0)
+        (else (send frame2 delete-child (car children))
+              (clear-board frame2 (cdr children)))))
+
+(define (print-matrix matr)
+  (cond ((null? matr) "")
+        (else (displayln (car matr))
+              (print-matrix (cdr matr)))))
 
 (send frame show #t)
