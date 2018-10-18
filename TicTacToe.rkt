@@ -1,5 +1,6 @@
 #lang racket/gui
 
+
 ;NOMENGLATURA
 ;0 -> Casilla vacía.
 ;1 -> Casilla con X.
@@ -9,8 +10,8 @@
 
 ;Función principal donde se verifica ganador y si no hay, ejecuta el algoritmo.
 (define (run-main board)
-  (cond ((equal? (solution-func board) 2) (list "Machine Wins!"))
-        ((equal? (solution-func board) 1) (list "Player Wins!"))
+  (cond ((equal? (solution-func board) 2) (list  "Machine"))
+        ((equal? (solution-func board) 1) (list  "Player"))
         (else (run-algorithm board))))  
 
 ;Corre el algoritmo codicioso.
@@ -40,7 +41,10 @@
 
 ;Función de selección: elige a uno de los mejores candidatos para servir como solución parcial.
 (define (selection-func ratedcandidates)
-  (list-ref (remove-duplicates (selection-aux ratedcandidates)) (random (+ (round(/ (listlen(remove-duplicates (selection-aux ratedcandidates))) 2)) 1)) ))
+  (cond ((equal? (listlen (remove-duplicates (selection-aux ratedcandidates))) 1) (car (remove-duplicates (selection-aux ratedcandidates))))
+        ((equal? (listlen (remove-duplicates (selection-aux ratedcandidates))) 0) '(-1 -1))
+        (else 
+         (list-ref (remove-duplicates (selection-aux ratedcandidates)) (random (+ (round(/ (listlen(remove-duplicates (selection-aux ratedcandidates))) 2)) 1)) )))) 
   
 
 ;Obtiene los mejores candidatos de la selección.
@@ -51,25 +55,26 @@
 
 ;Determina si se ha hallado una solución.
 (define (solution-func board)
-  (cond ((equal? (winner-row? 2 0 board) (get-height board)) 2)
-        ((equal? (winner-col? 2 0 0 board) (get-width board)) 2)
-        ((equal? (winner-row? 1 0 board) (get-height board)) 1)
-        ((equal? (winner-col? 1 0 0 board) (get-width board)) 1)
+  (cond ((or (winner-row? 1 board)
+             (winner-col? 1 0 0 board board)) 1)
+        ((or (winner-row? 2 board)
+             (winner-col? 2 0 0 board board)) 2)
         (else 0)))
 
-              
-;Determina si hay ganador al llenar una fila completa.
-(define (winner-row? symbol acc board)
-  (cond ((null? board) acc)
-        (else (cond ((> (count-element-row (car board) symbol) acc) (winner-row? symbol (count-element-row (car board) symbol) (cdr board)))
-                    (else (winner-row? symbol acc (cdr board)))))))
+;Determina si se ha ganado al llenar una fila cualquiera.
+(define (winner-row? symbol board)
+  (cond ((null? board) #f)
+        (else (cond ((equal? (count-element-row (car board) symbol) (get-width board)) #t)
+                    (else (winner-row? symbol (cdr board)))))))
 
-;Determina si hay ganador al llenar una columna completa.
-(define (winner-col? symbol colnumber acc board)
-  (cond ((equal? colnumber (get-width board)) acc)
-        (else (cond ((> (count-element-col colnumber symbol board) acc) (winner-col? symbol (+ colnumber 1) (count-element-col colnumber symbol board) board))
-                    (else (winner-col? symbol (+ colnumber 1) acc board))))))
-
+;Determina si se ha ganado al llenar una columna cualquiera.
+(define (winner-col? symbol acc indx board boardaux)
+  (cond ((equal? indx (get-width board)) #f)
+        ((equal? acc (get-height board)) #t)
+        ((null? boardaux) (winner-col? symbol 0 (+ indx 1) board board))
+        (else (cond ((equal? symbol (list-ref (car boardaux) indx)) (winner-col? symbol (+ acc 1) indx board (cdr boardaux)))
+                    (else (winner-col? symbol acc indx board (cdr boardaux)))))))  
+         
 ;Obtiene la mayor calificación de los candidatos.
 (define (get-highest-rate ratedcandidates highest)
   (cond ((null? ratedcandidates) highest)
@@ -232,11 +237,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;Graphical User Interface;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;Variables 
 (define total -6)
-(define numero_filas 0)
-(define numero_columnas 0)
+(define row_number 0)
+(define col_number 0)
 (define board '())
 (define machine_play '())
-(define buttons '())
 
 ;Contruye un marco/ventana (Ventana inicial )
 (define frame (new frame% (label "TicTacToe") (width 300) (height 100)))
@@ -247,10 +251,10 @@
 (define msg (new message% (parent frame)(label "Bienvenido a TicTacToe")(font f)  ))
 
 ;Hacer un panel para agregar hay botones.
-(define panelFilas_Columnas (new horizontal-panel% (parent frame)))
+(define button_panel (new horizontal-panel% (parent frame)))
 
 ;Hacer un slider para seleccionar la cantidad de filas en el tablero
-(define slider1(new slider% (parent panelFilas_Columnas)
+(define slider1(new slider% (parent button_panel)
                     (label "Filas: ") (min-value 3)  (max-value 10) (font f) 
                     (callback (lambda (slider event)
                                 (set! total (- (+ (send slider1 get-value) (send slider2 get-value)) 5) )
@@ -258,7 +262,7 @@
                     ))
 
 ;Hacer un slider para seleccionar la cantidad de columnas en el tablero
-(define slider2 (new slider% (parent panelFilas_Columnas)
+(define slider2 (new slider% (parent button_panel)
                      (label "Columnas: ") (min-value 3) (max-value 10) (font f)
                      (callback (lambda (slider event)
                                  (set! total (- (+ (send slider1 get-value) (send slider2 get-value)) 5) )
@@ -272,10 +276,12 @@
                 (stretchable-width 3)
                 (stretchable-height 2)
                 (callback (lambda (button event)
-                            (set! numero_filas (send slider1 get-value))
-                            (set! numero_columnas (send slider2 get-value))
-                            (set! board (TTT numero_columnas numero_filas))
-                            (c_t numero_filas numero_columnas)))
+                            (set! row_number (send slider1 get-value))
+                            (set! col_number (send slider2 get-value))
+                            (set! board (TTT col_number row_number))
+                            (build-board-ui row_number col_number)
+                            (send frame show #f)))
+                
                 )
   )
 
@@ -286,53 +292,61 @@
 (send msg2 set-value 1)
 
 
+(define frame2 (new frame% (label  "TicTacToe: The Game")))
+
 ;Función principal de contrución de tablero.
-(define (c_t filas col)
-  (define frame2 (new frame% (label  "TicTacToe: The Game" ) ))
+(define (build-board-ui filas col)
   ;(define msg (new message% (parent frame2)(label "__Tu turno__")))
   ;(printf "> Matriz ~ax~a\n" filas col)
-  (crear_tablero 0 0 frame2 )
+  (build-ui-aux 0 0 frame2 )
   )
 
 ;Función auxiliar que construye el tablero.
-(define (crear_tablero f c frame2)
+(define (build-ui-aux f c frame2)
   (cond    
-    ((equal? f numero_filas) (send frame2 show #t))
+    ((equal? f row_number) (send frame2 show #t))
     (else
-     (crear_filas f c frame2)
-     (crear_tablero (+ f 1) c frame2 )    
+     (create_rows f c frame2)
+     (build-ui-aux (+ f 1) c frame2 )    
     )
 ))
 
 ;Crea las filas del tablero.
-(define (crear_filas num_fil num_col frame2)
-     (define yesFilas (new horizontal-panel% (parent frame2)))
-     (crear_columnas num_fil num_col yesFilas frame2)
+(define (create_rows row col frame2)
+     (define rows (new horizontal-panel% (parent frame2) (vert-margin  0) (horiz-margin 0) ))
+     (create_cols row col rows frame2)
   )
 
 ;Crea las columnas del tablero.
-(define(crear_columnas num_fil num_col panel frame2)
+(define(create_cols row col panel frame2)
+  (define pos_x col)
+  (define pos_y row)
   (cond
-    ((equal? num_col numero_columnas) 0)
+    ((equal? col col_number) 0)
     (else
      (define cell (new button% (parent panel)
-             (label (get-pos-label num_fil num_col))
+             (label (get-pos-label row col))
              (vert-margin  0)
              (horiz-margin 0)
+             [stretchable-height #f]
+             [stretchable-width #f]
              (font f)
+             
              (callback (lambda (button event)                         
-                         (printf "Fila ~a \n" (round (/ (send panel get-y) 22)))
-                         (printf "Columna ~a \n" (round (/ (send cell get-x) 66)))
-                         (cond ((is-valid-move? (round (/ (send panel get-y) 22)) (round (/ (send cell get-x) 66)))
+                         ;(printf "Fila ~a \n" pos_x)
+                         ;(printf "Columna ~a \n" pos_y)                         
+                         (cond ((is-valid-move? pos_y pos_x)
                                 (send cell set-label "X")
-                                (set! board (change-symbol board (round(/ (send panel get-y) 22)) (round(/ (send cell get-x) 66)) 1))
+                                (set! board (change-symbol board  pos_y pos_x 1))
                                 (set! machine_play (run-main board))
                                 (set! board (cdr machine_play))
-                                (update-board frame2)))
-                         (print-matrix board)
+                                (cond ((equal? "Player" (car machine_play)) (show-msg "Player"))
+                                      ((equal? "Machine" (car machine_play)) (show-msg "Machine")))
+                                (update-board frame2))) 
                          ))))
-       (crear_columnas num_fil (+ num_col 1) panel frame2)
+       (create_cols row (+ col 1) panel frame2)
        )))
+
 
 ;Verifica que el jugador este haciendo una jugada válida.
 (define (is-valid-move? row col)
@@ -345,12 +359,12 @@
   (cond ((equal? (get-symbol row col board) 0) " ")
         ((equal? (get-symbol row col board) 1) "X")
         ((equal? (get-symbol row col board) 2) "O")
-        (else "Win")))
+        (else "GAME")))
 
 ;Actualiza el tablero cuando se hace una jugada.
 (define (update-board frame2)
   (clear-board frame2 (send frame2 get-children))
-  (crear_tablero 0 0 frame2))
+  (build-ui-aux 0 0 frame2))
 
 ;Limpia el tablero.
 (define (clear-board frame2 children)
@@ -363,5 +377,47 @@
   (cond ((null? matr) "")
         (else (displayln (car matr))
               (print-matrix (cdr matr)))))
+
+;Muestra un mensaje cuando el juego se ha acabado.
+(define (show-msg winner)
+  (send frame2 show #f)
+  (define pop-dialog (new dialog% [label "TicTacToe"]))
+  (define end-panel (new horizontal-panel% (parent pop-dialog)))
+  (define rest-button (new button%
+     [label "Restart"]
+     [parent end-panel]
+     [callback
+      (lambda (b e)
+        (send pop-dialog show #f)
+        (send frame2 show #f)
+        (set! board '())
+        (set! machine_play '())
+        (clear-board frame2 (send frame2 get-children))
+        (set! board (TTT col_number row_number))
+        (build-board-ui row_number col_number))]))
+
+  (define go-main-button (new button%
+     [label "Go Main"]
+     [parent end-panel]
+     [callback
+      (lambda (b e)
+        (set! total -6)
+        (set! row_number 0)
+        (set! col_number 0)
+        (set! board '())
+        (set! machine_play '())
+        (clear-board frame2 (send frame2 get-children))
+        (send pop-dialog show #f)
+        (send frame2 show #f)
+        (send frame show #t))]))
+
+  (define exit-button (new button%
+     [label "Exit"]
+     [parent end-panel]
+     [callback
+      (lambda (b e)
+        (exit))]))
+  (define msg (new message% (parent pop-dialog)(label (string-append winner " Wins!!"))))
+  (send pop-dialog show #t))
 
 (send frame show #t)
