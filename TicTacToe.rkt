@@ -88,6 +88,7 @@
         (else (cond ((> (caar ratedcandidates) highest) (get-highest-rate (cdr ratedcandidates) (caar ratedcandidates)))
                     (else (get-highest-rate (cdr ratedcandidates) highest)))))) 
 
+;Cuenta la cantidad de aparaciones de un elemento en la matriz.
 (define (count-element symbol board)
   (cond ((null? board) 0)
         (else (+ (count-element-row (car board) symbol) (count-element symbol (cdr board))))))
@@ -247,43 +248,44 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;Graphical User Interface;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;Variables 
-(define total -6)
+(define difficulty -6)
 (define row_number 0)
 (define col_number 0)
 (define board '())
 (define machine_play '())
 
 ;Contruye un marco/ventana (Ventana inicial )
-(define frame (new frame% (label "TicTacToe") (width 300) (height 100)))
+(define main_window (new frame% (label "TicTacToe") (width 300) (height 100)))
 
+;Fuente utilizada en los botones.
 (define f (new font%) )
 
 ;Hacer un mensaje de texto estático en el marco.
-(define msg (new message% (parent frame)(label "Bienvenido a TicTacToe")(font f)  ))
+(define welcome_message (new message% (parent main_window)(label "Bienvenido a TicTacToe")(font f)  ))
 
 ;Hacer un panel para agregar hay botones.
-(define button_panel (new horizontal-panel% (parent frame)))
+(define button_panel (new horizontal-panel% (parent main_window)))
 
 ;Hacer un slider para seleccionar la cantidad de filas en el tablero
 (define slider1(new slider% (parent button_panel)
                     (label "Filas: ") (min-value 3)  (max-value 10) (font f) 
                     (callback (lambda (slider event)
-                                (set! total (- (+ (send slider1 get-value) (send slider2 get-value)) 5) )
-                                (send msg2 set-value total) ))
+                                (set! difficulty (- (+ (send slider1 get-value) (send slider2 get-value)) 5) )
+                                (send difficulty_gauge set-value difficulty)))
                     ))
 
 ;Hacer un slider para seleccionar la cantidad de columnas en el tablero
 (define slider2 (new slider% (parent button_panel)
                      (label "Columnas: ") (min-value 3) (max-value 10) (font f)
                      (callback (lambda (slider event)
-                                 (set! total (- (+ (send slider1 get-value) (send slider2 get-value)) 5) )
-                                 (send msg2 set-value total) ))
+                                 (set! difficulty (- (+ (send slider1 get-value) (send slider2 get-value)) 5) )
+                                 (send difficulty_gauge set-value difficulty) ))
                      ))
 ;Hacer un panel para agregar hay botones.
-(define panel (new horizontal-panel% (parent frame)))
+(define panel_play (new horizontal-panel% (parent main_window)))
 
 ;Función para crear el boton de play.
-(define aa (new button% (parent panel) (label "Play") (font f)
+(define play_button (new button% (parent panel_play) (label "Play") (font f)
                 (stretchable-width 3)
                 (stretchable-height 2)
                 (callback (lambda (button event)
@@ -291,25 +293,25 @@
                             (set! col_number (send slider2 get-value))
                             (set! board (TTT col_number row_number))
                             (build-board-ui row_number col_number)
-                            (send frame show #f)))
+                            (send main_window show #f)))
                 
                 )
   )
 
 
-(define panel2 (new horizontal-panel% (parent frame)))
+(define difficulty_panel (new horizontal-panel% (parent main_window)))
 
-(define msg2 (new gauge%  (parent panel2) (label "Dificultad : ")(range 15) ))
-(send msg2 set-value 1)
+(define difficulty_gauge (new gauge%  (parent difficulty_panel) (label "Dificultad : ")(range 15) ))
+(send difficulty_gauge set-value 1)
 
 
-(define frame2 (new frame% (label  "TicTacToe: The Game")))
+(define game_window (new frame% (label  "TicTacToe: The Game") (stretchable-width #f) (stretchable-height #f)))
 
 ;Función principal de contrución de tablero.
 (define (build-board-ui filas col)
   ;(define msg (new message% (parent frame2)(label "__Tu turno__")))
   ;(printf "> Matriz ~ax~a\n" filas col)
-  (build-ui-aux 0 0 frame2 )
+  (build-ui-aux 0 0 game_window )
   )
 
 ;Función auxiliar que construye el tablero.
@@ -339,22 +341,21 @@
              (label (get-pos-label row col))
              (vert-margin  0)
              (horiz-margin 0)
-             [stretchable-height #f]
-             [stretchable-width #f]
+             (stretchable-height #f)
+             (stretchable-width #f)
              (font f)
              
-             (callback (lambda (button event)                         
-                         ;(printf "Fila ~a \n" pos_x)
-                         ;(printf "Columna ~a \n" pos_y)                         
+             (callback (lambda (button event)                                                
                          (cond ((is-valid-move? pos_y pos_x)
                                 (send cell set-label "X")
-                                (set! board (change-symbol board  pos_y pos_x 1))
+                                (set! board (change-symbol board  pos_y pos_x 1))                              
                                 (set! machine_play (run-main board))
-                                (set! board (cdr machine_play))
+                                (set! board (cdr machine_play))                             
+                                (update-board frame2)
                                 (cond ((equal? "Player" (car machine_play)) (show-msg "Player"))
-                                      ((equal? "Machine" (car machine_play)) (show-msg "Machine"))
-                                      ((equal? "No one" (car machine_play)) (show-msg "No One")))
-                                (update-board frame2))) 
+                                      ((equal? 2 (solution-func board)) (show-msg "Machine"))
+                                      ((no-winner? board) (show-msg "No One")))
+                                )) 
                          ))))
        (create_cols row (+ col 1) panel frame2)
        )))
@@ -392,43 +393,43 @@
 
 ;Muestra un mensaje cuando el juego se ha acabado.
 (define (show-msg winner)
-  (send frame2 show #f)
-  (define pop-dialog (new dialog% [label "TicTacToe"]))
+  ;(send frame2 show #f)
+  (define pop-dialog (new dialog% (label "TicTacToe")))
   (define end-panel (new horizontal-panel% (parent pop-dialog)))
   (define rest-button (new button%
-     [label "Restart"]
-     [parent end-panel]
-     [callback
+     (label "Restart")
+     (parent end-panel)
+     (callback
       (lambda (b e)
         (send pop-dialog show #f)
-        (send frame2 show #f)
+        (send game_window show #f)
         (set! board '())
         (set! machine_play '())
-        (clear-board frame2 (send frame2 get-children))
+        (clear-board game_window (send game_window get-children))
         (set! board (TTT col_number row_number))
-        (build-board-ui row_number col_number))]))
+        (build-board-ui row_number col_number)))))
 
   (define go-main-button (new button%
-     [label "Go Main"]
-     [parent end-panel]
-     [callback
+     (label "Go Main")
+     (parent end-panel)
+     (callback
       (lambda (b e)
-        (set! total -6)
+        (set! difficulty -6)
         (set! row_number 0)
         (set! col_number 0)
         (set! board '())
         (set! machine_play '())
-        (clear-board frame2 (send frame2 get-children))
+        (clear-board game_window (send game_window get-children))
         (send pop-dialog show #f)
-        (send frame show #t))]))
+        (send main_window show #t)))))
 
   (define exit-button (new button%
-     [label "Exit"]
-     [parent end-panel]
-     [callback
+     (label "Exit")
+     (parent end-panel)
+     (callback
       (lambda (b e)
-        (exit))]))
+        (exit)))))
   (define msg (new message% (parent pop-dialog)(label (string-append winner " Wins!!"))))
   (send pop-dialog show #t))
 
-(send frame show #t)
+(send main_window show #t)
