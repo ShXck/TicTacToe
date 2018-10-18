@@ -12,7 +12,6 @@
 (define (run-main board)
   (cond ((equal? (solution-func board) 2) (list  "Machine"))
         ((equal? (solution-func board) 1) (list  "Player"))
-        ((no-winner? board) (list "No one"))
         (else (run-algorithm board))))  
 
 ;Corre el algoritmo codicioso.
@@ -74,24 +73,14 @@
         ((equal? acc (get-height board)) #t)
         ((null? boardaux) (winner-col? symbol 0 (+ indx 1) board board))
         (else (cond ((equal? symbol (list-ref (car boardaux) indx)) (winner-col? symbol (+ acc 1) indx board (cdr boardaux)))
-                    (else (winner-col? symbol acc indx board (cdr boardaux)))))))
-
-;Determina si no hubo un ganador en la partida.
-(define (no-winner? board)
-  (cond ((zero? (count-element 0 board)) #t)
-        (else #f)))
-
-                                  
+                    (else (winner-col? symbol acc indx board (cdr boardaux)))))))  
+         
 ;Obtiene la mayor calificación de los candidatos.
 (define (get-highest-rate ratedcandidates highest)
   (cond ((null? ratedcandidates) highest)
         (else (cond ((> (caar ratedcandidates) highest) (get-highest-rate (cdr ratedcandidates) (caar ratedcandidates)))
                     (else (get-highest-rate (cdr ratedcandidates) highest)))))) 
-
-(define (count-element symbol board)
-  (cond ((null? board) 0)
-        (else (+ (count-element-row (car board) symbol) (count-element symbol (cdr board))))))
-
+  
 ;Cuenta las apariciones de un elemento en una fila.
 (define (count-element-row rowlst ele)
   (cond ((null? rowlst) 0)
@@ -352,8 +341,7 @@
                                 (set! machine_play (run-main board))
                                 (set! board (cdr machine_play))
                                 (cond ((equal? "Player" (car machine_play)) (show-msg "Player"))
-                                      ((equal? "Machine" (car machine_play)) (show-msg "Machine"))
-                                      ((equal? "No one" (car machine_play)) (show-msg "No One")))
+                                      ((equal? "Machine" (car machine_play)) (show-msg "Machine")))
                                 (update-board frame2))) 
                          ))))
        (create_cols row (+ col 1) panel frame2)
@@ -420,6 +408,7 @@
         (set! machine_play '())
         (clear-board frame2 (send frame2 get-children))
         (send pop-dialog show #f)
+        (send frame2 show #f)
         (send frame show #t))]))
 
   (define exit-button (new button%
